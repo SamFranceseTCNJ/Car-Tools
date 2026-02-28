@@ -45,7 +45,7 @@ class ELM327Bridge:
 
         print("\nDiscovered BLE devices:")
         for d in devices:
-            print(f"  - {d.name!r}  addr={d.address}  rssi={d.rssi}")
+            print(f"  - {d.name!r}  addr={d.address}")
         print("")
 
         for d in devices:
@@ -83,7 +83,7 @@ class ELM327Bridge:
     async def _discover_chars(self):
         assert self.client is not None
 
-        services = await self.client.get_services()
+        services = self.client.services
         print("Services/Characteristics:")
         write_candidates = []
         notify_candidates = []
