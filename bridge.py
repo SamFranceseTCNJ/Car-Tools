@@ -254,7 +254,7 @@ class ELM327Bridge:
         return None
     
     @staticmethod
-    def parse_dtcs(resp: str) -> list[str]:
+    def parse_dtcs(resp: str) -> list:
         codes = []
         parts = [p for p in resp.upper().split() if len(p) == 2]
 
@@ -270,7 +270,7 @@ class ELM327Bridge:
 
         return codes
 
-    async def read_dtcs(self) -> list[str]:
+    async def read_dtcs(self) -> list:
         resp = await self.send_elm("03", timeout=5.0)
         if not resp or "NO DATA" in resp or "UNABLE" in resp:
             return []
