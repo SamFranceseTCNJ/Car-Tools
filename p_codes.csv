@@ -1,7 +1,4 @@
 dtc, description
-
-DTC Codes - P0100-P0199 – Fuel and Air Metering
-
 P0100,Mass or Volume Air Flow Circuit Malfunction
 P0101,Mass or Volume Air Flow Circuit Range/Performance Problem
 P0102,Mass or Volume Air Flow Circuit Low Input
@@ -338,9 +335,6 @@ P0482,Cooling Fan 3 Control Circuit Malfunction
 P0483,Cooling Fan Rationality Check Malfunction
 P0484,Cooling Fan Circuit Over Current
 P0485,Cooling Fan Power/Ground Circuit Malfunction
-
-DTC Codes - P0500-P0599 – Vehicle Speed Controls and Idle Control System
-
 P0500,Vehicle Speed Sensor Malfunction
 P0501,Vehicle Speed Sensor Range/Performance
 P0502,Vehicle Speed Sensor Low Input
@@ -383,9 +377,6 @@ P0576,Cruise Control Related Malfunction
 P0578,Cruise Control Related Malfunction
 P0579,Cruise Control Related Malfunction
 P0580,Cruise Control Related Malfunction
-
-DTC Codes - P0600-P0699 – Computer Output Circuit
-
 P0600,Serial Communication Link Malfunction
 P0601,Internal Control Module Memory Check Sum Error
 P0602,Control Module Programming Error
@@ -402,9 +393,6 @@ P0650,Malfunction Indicator Lamp (MIL) Control Circuit Malfunction
 P0654,Engine RPM Output Circuit Malfunction
 P0655,Engine Hot Lamp Output Control Circuit Malfunction
 P0656,Fuel Level Output Circuit Malfunction
-
-DTC Codes - P0700-P0899 – Transmission
-
 P0700,Transmission Control System Malfunction
 P0701,Transmission Control System Range/Performance
 P0702,Transmission Control System Electrical
