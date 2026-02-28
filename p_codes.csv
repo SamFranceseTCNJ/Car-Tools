@@ -91,9 +91,6 @@ P0196,Engine Oil Temperature Sensor Range/Performance
 P0197,Engine Oil Temperature Sensor Low
 P0198,Engine Oil Temperature Sensor High
 P0199,Engine Oil Temperature Sensor Intermittent
-
-DTC Codes - P0200-P0299 – Fuel and Air Metering (Injector Circuit)
-
 P0200,Injector Circuit Malfunction
 P0201,Injector Circuit Malfunction - Cylinder 1
 P0202,Injector Circuit Malfunction - Cylinder 2
@@ -261,9 +258,6 @@ P0386,Crankshaft Position Sensor B Circuit Range/Performance
 P0387,Crankshaft Position Sensor B Circuit Low Input
 P0388,Crankshaft Position Sensor B Circuit High Input
 P0389,Crankshaft Position Sensor B Circuit Intermittent
-
-DTC Codes - P0400-P0499 – Auxiliary Emissions Controls
-
 P0400,Exhaust Gas Recirculation Flow Malfunction
 P0401,Exhaust Gas Recirculation Flow Insufficient Detected
 P0402,Exhaust Gas Recirculation Flow Excessive Detected
