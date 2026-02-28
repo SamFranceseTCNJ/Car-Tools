@@ -14,6 +14,12 @@ WS_PORT = 8765
 POLL_INTERVAL = 0.5
 # ---------------------------
 
+DTC_PREFIXES = {
+    "0": "P0", "1": "P1", "2": "P2", "3": "P3",
+    "4": "C0", "5": "C1", "6": "C2", "7": "C3",
+    "8": "B0", "9": "B1", "A": "B2", "B": "B3",
+    "C": "U0", "D": "U1", "E": "U2", "F": "U3",
+}
 
 def now_ms() -> int:
     return int(time.time() * 1000)
@@ -34,7 +40,8 @@ class ELM327Bridge:
             "ts": now_ms(),
             "rpm": None,
             "speed_kph": None,
-            "raw": None
+            "raw": None,
+            "dtcs": []
         }
 
         self.ws_clients = set()
@@ -79,6 +86,13 @@ class ELM327Bridge:
         await self.send_elm("ATSP0") # automatic protocol
 
         print("ELM init complete.")
+        
+        # Read DTCs on connect
+        dtcs = await self.read_dtcs()
+        if dtcs:
+            print(f"Active fault codes: {dtcs}")
+        else:
+            print("No fault codes found.")
 
     async def _discover_chars(self):
         assert self.client is not None
@@ -238,6 +252,32 @@ class ELM327Bridge:
         except ValueError:
             pass
         return None
+    
+    @staticmethod
+    def parse_dtcs(resp: str) -> list[str]:
+        codes = []
+        parts = [p for p in resp.upper().split() if len(p) == 2]
+
+        if parts and parts[0] == "43":
+            parts = parts[1:]
+
+        for i in range(0, len(parts) - 1, 2):
+            b1, b2 = parts[i], parts[i+1]
+            if b1 == "00" and b2 == "00":
+                continue
+            prefix = DTC_PREFIXES.get(b1[0], "P0")
+            codes.append(prefix + b1[1] + b2)
+
+        return codes
+
+    async def read_dtcs(self) -> list[str]:
+        resp = await self.send_elm("03", timeout=5.0)
+        if not resp or "NO DATA" in resp or "UNABLE" in resp:
+            return []
+        codes = self.parse_dtcs(resp)
+        self.latest["dtcs"] = codes
+        await self.broadcast(self.latest)
+        return codes
 
     async def broadcast(self, msg: dict):
         if not self.ws_clients:
