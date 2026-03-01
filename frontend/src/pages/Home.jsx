@@ -15,12 +15,16 @@ const Home = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded shadow transition">
-            Get Started
-          </button>
-          <button className="bg-white hover:bg-gray-100 border border-gray-300 text-gray-800 font-semibold py-3 px-6 rounded shadow transition">
-            Learn More
-          </button>
+          <a href="/dashboard">
+            <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded shadow transition">
+                Get Started
+            </button>
+          </a>
+          <a href="/about">
+            <button className="bg-white hover:bg-gray-100 border border-gray-300 text-gray-800 font-semibold py-3 px-6 rounded shadow transition">
+                Learn More
+            </button>
+          </a>
         </div>
       </div>
     </div>
