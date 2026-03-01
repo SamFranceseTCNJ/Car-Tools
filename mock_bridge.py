@@ -41,12 +41,12 @@ async def mock_poll_loop(ws_clients):
 async def ws_handler(websocket):
     ws_clients.add(websocket)
     try:
-        await websocket.send(json.dumps({
+        await websocket.send(json.dumps({"type": "live", "data":{
             "ts": now_ms(),
             "rpm": 0,
             "speed_kph": 0,
             "raw": {}
-        }))
+        }}))
 
         async for _ in websocket:
             pass
