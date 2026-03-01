@@ -117,23 +117,40 @@ const SnapshotDashboard = () => {
 
           {/* Diagnostics */}
           <div className="bg-white rounded-lg shadow p-6 text-center md:col-span-2">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
-              Diagnostics
-            </h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Diagnostics</h2>
 
-            {data?.diagnostics?.dtcs?.length > 0 ? (
-              <ul className="text-gray-800 font-mono space-y-1">
-                {data.diagnostics.dtcs.map((code) => (
-                  <li key={code}>{code}</li>
-                ))}
+            {Array.isArray(data?.diagnostics?.dtcs) && data.diagnostics.dtcs.length > 0 ? (
+              <ul className="text-gray-800 font-mono space-y-2 text-left">
+                {data.diagnostics.dtcs.map((dtc, i) => {
+                  const isObj = dtc && typeof dtc === "object";
+                  const code = isObj ? dtc.code : String(dtc);
+                  const status = isObj ? dtc.status : null;
+                  const description = isObj ? dtc.description : null;
+
+                  return (
+                    <li
+                      key={`${code ?? "dtc"}-${i}`}
+                      className="rounded border border-gray-200 bg-gray-50 p-3"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-semibold">{code ?? "Unknown code"}</span>
+                        {status ? (
+                          <span className="text-xs text-gray-600">{status}</span>
+                        ) : null}
+                      </div>
+                      {description ? (
+                        <div className="mt-1 text-sm text-gray-700 font-sans">
+                          {description}
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
-              <p className="text-gray-600">
-                No active trouble codes detected.
-              </p>
+              <p className="text-gray-600">No active trouble codes detected.</p>
             )}
           </div>
-
         </div>
       </div>
     </div>
