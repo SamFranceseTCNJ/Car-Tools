@@ -66,9 +66,11 @@ class ELM327Bridge:
         }
 
         self.diagnostics_data_latest = {
+            "ts": now_ms(),
+            "real_dtcs": [],
+            "sample_dtcs": [],
             "dtcs": []
         }
-
 
     async def find_device(self) -> str:
         """Scan BLE devices and pick the first matching DEVICE_NAME_HINT."""
@@ -293,6 +295,7 @@ class ELM327Bridge:
 
             await asyncio.sleep(poll_interval)
     
+
     async def diagnostics_poll_loop(self, poll_interval=30):
         while True:
             try:
@@ -301,20 +304,53 @@ class ELM327Bridge:
                 print(f"[diagnostics_poll_loop] error: {e}")
             await asyncio.sleep(poll_interval)
 
+
+    def example_diagnostics(self):
+        return [
+            {"code": "P0300", "status": "confirmed", "description": "Misfire detected"},
+            {"code": "P0420", "status": "pending", "description": "Catalyst efficiency low"},
+        ]
+
+
     async def refresh_diagnostics(self):
-        self.diagnostics_data_latest = {
-            "ts": now_ms(),
-            "dtcs": await self.metric_helper.read_dtcs(send_elm=self.send_elm)
-        }
+        real_raw = await self.metric_helper.read_dtcs(send_elm=self.send_elm)
+        real_dtcs = self._normalize_dtcs(real_raw)
+
+        sample_dtcs = self._normalize_dtcs(self.example_diagnostics())
+
+        combined = real_dtcs + sample_dtcs
 
         self.diagnostics_data_latest = {
             "ts": now_ms(),
-            "dtcs": [
-                { "code": "P0300", "status": "confirmed", "description": "Misfire detected" },
-                { "code": "P0420", "status": "pending", "description": "Catalyst efficiency low" }
-            ]
+            "real_dtcs": real_dtcs,
+            "sample_dtcs": sample_dtcs,
+            "dtcs": combined,
         }
         return self.diagnostics_data_latest
+
+
+    def _normalize_dtcs(self, dtcs):
+        """
+        Ensures every DTC is a dict:
+        - "P0300" -> {"code":"P0300","status":"unknown","description":""}
+        - {"code":...} stays as-is (with defaults)
+        """
+        out = []
+        if not dtcs:
+            return out
+
+        for d in dtcs:
+            if isinstance(d, str):
+                out.append({"code": d, "status": "unknown", "description": ""})
+            elif isinstance(d, dict):
+                out.append({
+                    "code": d.get("code") or d.get("dtc") or "UNKNOWN",
+                    "status": d.get("status", "unknown"),
+                    "description": d.get("description", ""),
+                })
+            else:
+                out.append({"code": str(d), "status": "unknown", "description": ""})
+        return out
 
 
     async def broadcast(self, msg: dict):
@@ -330,6 +366,7 @@ class ELM327Bridge:
                 dead.add(ws)
         self.ws_clients -= dead
     
+
     def snapshot(self):
         return {
             "live": self.live_data_latest,
@@ -369,7 +406,6 @@ async def main():
         asyncio.create_task(bridge.engine_poll_loop(), name="engine"),
         asyncio.create_task(bridge.fuel_air_poll_loop(), name="fuel_air"),
         asyncio.create_task(bridge.status_poll_loop(), name="status"),
-        asyncio.create_task(bridge.refresh_diagnostics()),
         asyncio.create_task(bridge.diagnostics_poll_loop(), name="diagnostics")
     ]
 
