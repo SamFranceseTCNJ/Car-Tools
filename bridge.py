@@ -293,6 +293,13 @@ class ELM327Bridge:
 
             await asyncio.sleep(poll_interval)
     
+    async def diagnostics_poll_loop(self, poll_interval=30):
+        while True:
+            try:
+                await self.refresh_diagnostics()
+            except Exception as e:
+                print(f"[diagnostics_poll_loop] error: {e}")
+            await asyncio.sleep(poll_interval)
 
     async def refresh_diagnostics(self):
         self.diagnostics_data_latest = {
@@ -354,7 +361,8 @@ async def main():
         asyncio.create_task(bridge.engine_poll_loop(), name="engine"),
         asyncio.create_task(bridge.fuel_air_poll_loop(), name="fuel_air"),
         asyncio.create_task(bridge.status_poll_loop(), name="status"),
-        asyncio.create_task(bridge.refresh_diagnostics())
+        asyncio.create_task(bridge.refresh_diagnostics()),
+        asyncio.create_task(bridge.diagnostics_poll_loop(), name="diagnostics")
     ]
 
     try:

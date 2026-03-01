@@ -10,6 +10,21 @@ def get_group_latest(bridge, group: str):
     }
     return groups.get(group)
 
+@web.middleware
+async def cors(request, handler):
+    if request.method == "OPTIONS":
+        resp = web.Response(status=204)
+    else:
+        resp = await handler(request)
+        
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return resp
+
+async def api_health(request):
+    return web.json_response({"ok": True})
+
 async def api_snapshot(request):
     bridge = request.app["bridge"]
     return web.json_response(bridge.snapshot())
@@ -28,17 +43,19 @@ async def api_refresh_diagnostics(request):
     return web.json_response(data)
 
 async def start_api_server(bridge, host="127.0.0.1", port=8080):
-    app = web.Application()
+    app = web.Application(middlewares=[cors])
     app["bridge"] = bridge
 
+    app.router.add_get("/api/health", api_health)
     app.router.add_get("/api/snapshot", api_snapshot)
     app.router.add_get("/api/group/{group}", api_group)
     app.router.add_post("/api/diagnostics/refresh", api_refresh_diagnostics)
+    app.router.add_route("OPTIONS", "/{tail:.*}", lambda r: web.Response(status=204))
 
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, host, port)
     await site.start()
-    print(f"HTTP API running at http://{host}:{port}")
 
+    print(f"HTTP API running at http://{host}:{port}")
     return runner
