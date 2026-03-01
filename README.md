@@ -1,6 +1,13 @@
 # Car-Tools
 An automobile diagnostic intelligence app that uses an On-Board Diagnostics II (OBD2) scanner to inform you about your car's data and suggest solutions to any issues.
 
+# Dependencies
+```bash
+pip install aiohttp
+pip install websockets
+pip install bleak
+```
+
 # Run Frontend
 
 1. navigate to the frontend
