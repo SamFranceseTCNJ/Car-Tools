@@ -18,6 +18,13 @@ async def mock_poll_loop(ws_clients):
             "ts": now_ms(),
             "rpm": random.randint(700, 4000),
             "speed_kph": random.randint(0, 120),
+            "throttle_position": random.randint(0, 100),
+            "fuel_level": random.randint(0, 100),
+            "engine_load": random.randint(0, 100),
+            "coolant_temp": random.randint(0, 100),
+            "control_module_voltage": random.randint(12, 15),
+            "fuel_rate": random.randint(0, 100),
+            "dtcs": random.choice(['P0001', ['B0002', 'C0003'], 'U0004']),
             "raw": {
                 "010C": "41 0C {:02X} {:02X}".format(random.randint(0, 255), random.randint(0, 255)),
                 "010D": "41 0D {:02X}".format(random.randint(0, 255))

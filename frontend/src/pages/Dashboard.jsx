@@ -128,6 +128,28 @@ const Dashboard = () => {
     }
   };
 
+  const showDTCs = () => {
+    // show diagnostic trouble codes from the most recent telemetry packet
+    const latest = history.length ? history[history.length - 1] : null;
+    if (!latest) {
+      alert("No data available yet");
+      return;
+    }
+
+    let codes = latest.dtcs;
+    if (codes == null) {
+      alert("No DTCs reported");
+      return;
+    }
+
+    // normalize to array for display
+    if (!Array.isArray(codes)) {
+      codes = [codes];
+    }
+
+    alert("Diagnostic Trouble Codes:\n" + codes.join("\n"));
+  };
+
   const latest = history.length ? history[history.length - 1] : null;
   const series = (key) =>
     history.map((m) => (m?.[key] == null ? null : Number(m[key])));
@@ -176,7 +198,9 @@ const Dashboard = () => {
 
         {diagnosticsRunning && (
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-            <button className="bg-blue-400 hover:bg-blue-600 text-white py-3 px-6 rounded shadow">
+            <button 
+              onClick={showDTCs}
+              className="bg-blue-400 hover:bg-blue-600 text-white py-3 px-6 rounded shadow">
               View DTCs
             </button>
             <button className="bg-blue-400 hover:bg-blue-600 text-white py-3 px-6 rounded shadow">
@@ -267,6 +291,9 @@ const Dashboard = () => {
                   </div>
                   <div className="text-sm font-semibold text-gray-800">
                     RPM: {msg.rpm ?? "—"} | Speed: {msg.speed_kph ?? "—"} km/h
+                  </div>
+                  <div className="text-sm font-semibold text-gray-800">
+                    DTCs: {JSON.stringify(msg.dtcs) ?? "—"}
                   </div>
                   <div className="text-[11px] text-gray-500 mt-1">
                     Raw: {JSON.stringify(msg.raw)}
