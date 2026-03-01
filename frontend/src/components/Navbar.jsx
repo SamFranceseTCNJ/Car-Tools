@@ -18,6 +18,18 @@ const Navbar = () => {
         >
           Dashboard
         </Link>
+        <Link
+          to="/snapshot"
+          className="hover:text-blue-300 transition font-medium"
+        >
+          Snapshots
+        </Link>
+        <Link
+          to="/diagnostics"
+          className="hover:text-blue-300 transition font-medium"
+        >
+          Diagnostics
+        </Link>
       </div>
     </nav>
   );
