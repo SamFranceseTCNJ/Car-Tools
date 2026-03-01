@@ -13,6 +13,12 @@ const Navbar = () => {
           Home
         </Link>
         <Link
+          to="/about"
+          className="hover:text-blue-300 transition font-medium"
+        >
+          About
+        </Link>
+        <Link
           to="/dashboard"
           className="hover:text-blue-300 transition font-medium"
         >
