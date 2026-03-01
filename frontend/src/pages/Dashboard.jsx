@@ -1,9 +1,9 @@
 import { useState } from "react";
 import Navbar from "../components/Navbar";
-import Live_Metrics_Dashboard from "./Live_Metrics";
-import Engine_Metrics_Dashboard from "./Engine_Metrics";
-import Fuel_Air_Metrics_Dashboard from "./Fuel_Air_Metrics";
-import Status_Metrics_Dashboard from "./Status_Metrics";
+import Live_Metrics_Dashboard from "./subpages/Live_Metrics";
+import Engine_Metrics_Dashboard from "./subpages/Engine_Metrics";
+import Fuel_Air_Metrics_Dashboard from "./subpages/Fuel_Air_Metrics";
+import Status_Metrics_Dashboard from "./subpages/Status_Metrics";
 
 const Dashboard = () => {
   const [active, setActive] = useState("live");
