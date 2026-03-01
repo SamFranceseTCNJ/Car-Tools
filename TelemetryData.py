@@ -16,7 +16,56 @@ def now_ms() -> int:
     return int(time.time() * 1000)
 
 
-class live_metrics:
+class metrics_helpers:
+    def _extract_hex_bytes(self, resp: str):
+        """
+        Convert responses like:
+        '41 0C 1A F8'
+        '410C1AF8'
+        '41 0C 1A F8\r\n'
+        into a list of byte ints.
+        """
+        filtered = []
+        for ch in resp:
+            if ch in "0123456789abcdefABCDEF ":
+                filtered.append(ch)
+        s = "".join(filtered).strip()
+
+        if not s:
+            return []
+
+        if " " in s:
+            parts = [p for p in s.split() if p]
+        else:
+            parts = [s[i:i+2] for i in range(0, len(s), 2)]
+
+        out = []
+        for p in parts:
+            if len(p) == 2:
+                try:
+                    out.append(int(p, 16))
+                except ValueError:
+                    pass
+        return out
+
+
+    def _find_mode01_pid_bytes(self, resp: str, pid: int, data_len: int):
+        """
+        Find a Mode 01 response '41 <pid> ...' and return the next `data_len` bytes.
+        Returns None if not found or not enough bytes.
+        """
+        b = self._extract_hex_bytes(resp)
+        if not b:
+            return None
+
+        # Look for sequence: 0x41, pid
+        for i in range(len(b) - (2 + data_len) + 1):
+            if b[i] == 0x41 and b[i + 1] == pid:
+                data = b[i + 2 : i + 2 + data_len]
+                if len(data) == data_len:
+                    return data
+        return None
+
     
     def parse_rpm(self, resp: str) -> Optional[float]:
         # PID 0x0C: A B
@@ -60,9 +109,7 @@ class live_metrics:
             return None
         A = data[0]
         return float(A)
-
-
-class engine_metrics:
+    
     
     def parse_coolant_temp_c(self, resp: str) -> Optional[float]:
         # PID 0x05: A
@@ -89,9 +136,7 @@ class engine_metrics:
             return None
         A = data[0]
         return float(A - 40)
-
-
-class fuel_air_metrics:
+    
     
     def parse_maf_gps(self, resp: str) -> Optional[float]:
         # PID 0x10: A B
@@ -142,8 +187,6 @@ class fuel_air_metrics:
         A, B = data
         return ((A * 256) + B) / 20.0
 
-
-class status_metrics:
     
     def parse_fuel_level_pct(self, resp: str) -> Optional[float]:
         # PID 0x2F: A
@@ -162,8 +205,6 @@ class status_metrics:
         A, B = data
         return ((A * 256) + B) / 1000.0
     
-
-class diagnostics_metrics:
     
     def parse_dtcs(self, resp: str) -> list[str]:
         """

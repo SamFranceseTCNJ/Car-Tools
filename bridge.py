@@ -4,14 +4,18 @@ import time
 from typing import Optional
 
 from bleak import BleakClient, BleakScanner
-from TelemetryData import live_metrics, engine_metrics, fuel_air_metrics, status_metrics, diagnostics_metrics, now_ms
+from TelemetryData import metrics_helpers, now_ms
 import websockets
+from api_server import start_api_server
+
 
 # ---------- CONFIG ----------
 DEVICE_NAME_HINT = "IOS-Vlink"
 SCAN_TIMEOUT = 6.0
 WS_HOST = "127.0.0.1"
 WS_PORT = 8765
+API_HOST = "127.0.0.1"
+API_PORT = 8080
 # ---------------------------
 
 
@@ -27,12 +31,8 @@ class ELM327Bridge:
         self._response_queue = asyncio.Queue()
 
         self.ws_clients = set()
-
-        self.live_data = live_metrics()
-        self.engine_data = engine_metrics()
-        self.fuel_air_data = fuel_air_metrics()
-        self.status_data = status_metrics()
-        self.diagnostics_data = diagnostics_metrics()
+        self._elm_lock = asyncio.Lock()
+        self.metric_helper = metrics_helpers()
 
         self.live_data_latest = {
             "ts": now_ms(),
@@ -111,13 +111,6 @@ class ELM327Bridge:
         await self.send_elm("ATSP0") # automatic protocol
 
         print("ELM init complete.")
-        
-        # Read DTCs on connect
-        dtcs = await self.read_dtcs()
-        if dtcs:
-            print(f"Active fault codes: {dtcs}")
-        else:
-            print("No fault codes found.")
 
 
     async def _discover_chars(self):
@@ -188,22 +181,23 @@ class ELM327Bridge:
 
 
     async def send_elm(self, cmd: str, timeout: float = 2.0) -> str:
-        """Send an ELM command and wait for the response (until '>')."""
+        async with self._elm_lock:
+            """Send an ELM command and wait for the response (until '>')."""
 
-        while not self._response_queue.empty():
+            while not self._response_queue.empty():
+                try:
+                    self._response_queue.get_nowait()
+                except Exception:
+                    break
+
+            await self.write_line(cmd)
+
             try:
-                self._response_queue.get_nowait()
-            except Exception:
-                break
+                resp = await asyncio.wait_for(self._response_queue.get(), timeout=timeout)
+            except asyncio.TimeoutError:
+                resp = ""
 
-        await self.write_line(cmd)
-
-        try:
-            resp = await asyncio.wait_for(self._response_queue.get(), timeout=timeout)
-        except asyncio.TimeoutError:
-            resp = ""
-
-        return resp
+            return resp
     
 
     async def live_poll_loop(self, poll_interval = 0.5):
@@ -217,14 +211,14 @@ class ELM327Bridge:
 
                 self.live_data_latest = {
                     "ts": now_ms(),
-                    "rpm": self.live_data.parse_rpm(rpm),
-                    "speed_kph": self.live_data.parse_speed_kph(speed),
-                    "engine_load": self.live_data.parse_engine_load(engine_load),
-                    "intake_manifold_pressure": self.live_data.parse_intake_manifold_pressure_kpa(intake_manifold_pres),
-                    "throttle_position": self.live_data.parse_throttle_position_pct(throttle_pos)
+                    "rpm": self.metric_helper.parse_rpm(rpm),
+                    "speed_kph": self.metric_helper.parse_speed_kph(speed),
+                    "engine_load": self.metric_helper.parse_engine_load(engine_load),
+                    "intake_manifold_pressure": self.metric_helper.parse_intake_manifold_pressure_kpa(intake_manifold_pres),
+                    "throttle_position": self.metric_helper.parse_throttle_position_pct(throttle_pos)
                 }
-
-                await self.broadcast(self.live_data_latest)
+                
+                await self.broadcast({"type": "live", "data": self.live_data_latest})
 
             except Exception as e:
                 print(f"[live_poll_loop] error: {e}")
@@ -241,12 +235,12 @@ class ELM327Bridge:
 
                 self.engine_data_latest = {
                     "ts": now_ms(),
-                    "coolant_temp": self.engine_data.parse_coolant_temp_c(coolant_temp),
-                    "intake_air_temp_c": self.engine_data.parse_intake_air_temp_c(intake_air_temp),
-                    "timing_advance_deg": self.engine_data.parse_timing_advance_deg(timing_advance)
+                    "coolant_temp": self.metric_helper.parse_coolant_temp_c(coolant_temp),
+                    "intake_air_temp_c": self.metric_helper.parse_intake_air_temp_c(intake_air_temp),
+                    "timing_advance_deg": self.metric_helper.parse_timing_advance_deg(timing_advance)
                 }
 
-                await self.broadcast(self.engine_data_latest)
+                await self.broadcast({"type": "engine", "data": self.engine_data_latest})
 
             except Exception as e:
                 print(f"[engine_poll_loop] error: {e}")
@@ -264,15 +258,16 @@ class ELM327Bridge:
                 fuel_rate = await self.send_elm("015E")
 
                 self.fuel_air_data_latest = {
-                    "maf_gps": self.parse_maf_gps(mass_air_flow),
-                    "short_term_fuel_trim_B1": self.fuel_air_data.parse_stft_bank1_pct(short_term_fuel_trim_B1),
-                    "long_term_fuel_trim_B1": self.fuel_air_data.parse_ltft_bank1_pct(long_term_fuel_trim_B1),
-                    "short_term_fuel_trim_B2": self.fuel_air_data.parse_stft_bank2_pct(short_term_fuel_trim_B2),
-                    "long_term_fuel_trim_B2": self.fuel_air_data.parse_ltft_bank2_pct(long_term_fuel_trim_B2),
-                    "fuel_rate": self.fuel_air_data.parse_fuel_rate_lph(fuel_rate)
+                    
+                    "maf_gps": self.metric_helper.parse_maf_gps(mass_air_flow),
+                    "short_term_fuel_trim_B1": self.metric_helper.parse_stft_bank1_pct(short_term_fuel_trim_B1),
+                    "long_term_fuel_trim_B1": self.metric_helper.parse_ltft_bank1_pct(long_term_fuel_trim_B1),
+                    "short_term_fuel_trim_B2": self.metric_helper.parse_stft_bank2_pct(short_term_fuel_trim_B2),
+                    "long_term_fuel_trim_B2": self.metric_helper.parse_ltft_bank2_pct(long_term_fuel_trim_B2),
+                    "fuel_rate": self.metric_helper.parse_fuel_rate_lph(fuel_rate)
                 }
 
-                await self.broadcast(self.fuel_air_data_latest)
+                await self.broadcast({"type": "fuel_air", "data": self.fuel_air_data_latest})
 
             except Exception as e:
                 print(f"[fuel_air_poll_loop] error: {e}")
@@ -287,84 +282,30 @@ class ELM327Bridge:
                 control_module_volt = await self.send_elm("0142")
                 
                 self.status_data_latest = {
-                    "fuel_level": self.status_data.parse_fuel_level_pct(fuel_lev),
-                    "control_module_voltage": self.status_data.parse_control_module_voltage_v(control_module_volt)
+                    "fuel_level": self.metric_helper.parse_fuel_level_pct(fuel_lev),
+                    "control_module_voltage": self.metric_helper.parse_control_module_voltage_v(control_module_volt)
                 }
 
-                await self.broadcast(self.status_data_latest)
+                await self.broadcast({"type": "status", "data": self.status_data_latest})
 
             except Exception as e:
                 print(f"[status_poll_loop] error: {e}")
 
             await asyncio.sleep(poll_interval)
     
-    async def diagnostics_poll_loop(self, poll_interval = 5):
-        while True:
-            try:    
-                self.diagnostics_data_latest = {
-                    "dtcs": await self.diagnostics_data.read_dtcs(send_elm=self.send_elm)
-                }
 
-                await self.broadcast(self.diagnostics_data_latest)
-
-            except Exception as e:
-                print(f"[diagnostics_poll_loop] error: {e}")
-
-            await asyncio.sleep(poll_interval)
-
-    def _extract_hex_bytes(self, resp: str):
-        """
-        Convert responses like:
-        '41 0C 1A F8'
-        '410C1AF8'
-        '41 0C 1A F8\r\n'
-        into a list of byte ints.
-        """
-        filtered = []
-        for ch in resp:
-            if ch in "0123456789abcdefABCDEF ":
-                filtered.append(ch)
-        s = "".join(filtered).strip()
-
-        if not s:
-            return []
-
-        if " " in s:
-            parts = [p for p in s.split() if p]
-        else:
-            parts = [s[i:i+2] for i in range(0, len(s), 2)]
-
-        out = []
-        for p in parts:
-            if len(p) == 2:
-                try:
-                    out.append(int(p, 16))
-                except ValueError:
-                    pass
-        return out
-
-
-    def _find_mode01_pid_bytes(self, resp: str, pid: int, data_len: int):
-        """
-        Find a Mode 01 response '41 <pid> ...' and return the next `data_len` bytes.
-        Returns None if not found or not enough bytes.
-        """
-        b = self._extract_hex_bytes(resp)
-        if not b:
-            return None
-
-        # Look for sequence: 0x41, pid
-        for i in range(len(b) - (2 + data_len) + 1):
-            if b[i] == 0x41 and b[i + 1] == pid:
-                data = b[i + 2 : i + 2 + data_len]
-                if len(data) == data_len:
-                    return data
-        return None
+    async def refresh_diagnostics(self):
+        self.diagnostics_data_latest = {
+            "ts": now_ms(),
+            "dtcs": await self.metric_helper.read_dtcs(send_elm=self.send_elm)
+        }
+        return self.diagnostics_data_latest
 
 
     async def broadcast(self, msg: dict):
         if not self.ws_clients:
             return
+
         data = json.dumps(msg)
         dead = set()
         for ws in self.ws_clients:
@@ -373,12 +314,23 @@ class ELM327Bridge:
             except Exception:
                 dead.add(ws)
         self.ws_clients -= dead
+    
+    def snapshot(self):
+        return {
+            "live": self.live_data_latest,
+            "engine": self.engine_data_latest,
+            "fuel_air": self.fuel_air_data_latest,
+            "status": self.status_data_latest,
+            "diagnostics": self.diagnostics_data_latest,
+        }
 
 
 async def ws_handler(bridge: ELM327Bridge, websocket):
     bridge.ws_clients.add(websocket)
+
     try:
-        await websocket.send(json.dumps(bridge.latest))
+        await websocket.send(json.dumps(bridge.snapshot()))
+
         async for _ in websocket:
             pass
     finally:
@@ -395,10 +347,29 @@ async def main():
     ws_server = await websockets.serve(handler, WS_HOST, WS_PORT)
     print(f"WebSocket server running at ws://{WS_HOST}:{WS_PORT}")
 
-    await bridge.poll_loop()
+    api_runner = await start_api_server(bridge, API_HOST, API_PORT)
 
-    await ws_server.wait_closed()
+    tasks = [
+        asyncio.create_task(bridge.live_poll_loop(), name="live"),
+        asyncio.create_task(bridge.engine_poll_loop(), name="engine"),
+        asyncio.create_task(bridge.fuel_air_poll_loop(), name="fuel_air"),
+        asyncio.create_task(bridge.status_poll_loop(), name="status"),
+        asyncio.create_task(bridge.refresh_diagnostics())
+    ]
 
+    try:
+        await asyncio.Future()
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        pass
+    finally:
+        for t in tasks:
+            t.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+        ws_server.close()
+        await ws_server.wait_closed()
+
+        await api_runner.cleanup()
 
 if __name__ == "__main__":
     asyncio.run(main())
