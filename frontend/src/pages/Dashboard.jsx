@@ -20,14 +20,17 @@ const Dashboard = () => {
         {diagnosticsRunning && (
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
             {/* Example buttons that show after running diagnostics */}
-            <button className="bg-blue-600 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded shadow transition">
+            <button className="bg-blue-400 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded shadow transition">
               View DTCs
             </button>
-            <button className="bg-blue-600 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded shadow transition">
-              Export Report
+            <button className="bg-blue-400 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded shadow transition">
+              Rank Severity
             </button>
-            <button className="bg-blue-600 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded shadow transition">
-              Export Report
+            <button className="bg-blue-400 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded shadow transition">
+              Predict Causes
+            </button>
+            <button className="bg-blue-400 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded shadow transition">
+              Suggest Repair Difficulty
             </button>
           </div>
         )}
