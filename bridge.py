@@ -2,7 +2,7 @@ import asyncio
 import json
 import time
 from typing import Optional
-
+import gemini
 from bleak import BleakClient, BleakScanner
 from TelemetryData import metrics_helpers, now_ms
 import websockets
@@ -307,8 +307,8 @@ class ELM327Bridge:
 
     def example_diagnostics(self):
         return [
-            {"code": "P0300", "status": "confirmed", "description": "Misfire detected"},
-            {"code": "P0420", "status": "pending", "description": "Catalyst efficiency low"},
+            {"code": "P0300", "status": "confirmed", "description": "Misfire detected", "response": gemini.generate_content("P0300")},
+            {"code": "P0420", "status": "pending", "description": "Catalyst efficiency low", "response": gemini.generate_content("P0420")},
         ]
 
 
