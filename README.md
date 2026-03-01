@@ -24,3 +24,8 @@ npm install
 ```bash
 npm run dev
 ```
+
+# Run Backend
+```bash
+python bridge.py
+```
